@@ -1,0 +1,39 @@
+target/xtensa-esp32-none-elf/release/esp-test  :
+section                   size         addr
+.rwtext                   6076   1074267136
+.rwtext.wifi             47744   1074273212
+.data                     8040   1073414144
+.data.wifi                 532   1073422184
+.bss                    104020   1073422720
+.noinit                      0   1073526740
+.rodata_desc               256   1061158944
+.rodata                  78136   1061159200
+.rodata.wifi             27344   1061237336
+.text                   549045   1074593824
+.wifiorslpiram.27           51   1075142872
+.rtc_fast.text               0   1074528256
+.vectors                  1024   1074266112
+.rtc_fast.dummy              0   1073217536
+.rtc_fast.data               0   1073217536
+.rtc_fast.bss                0   1073217536
+.rtc_fast.persistent         0   1073217536
+.rtc_slow.text               0   1342177280
+.rtc_slow.data               0   1342177280
+.rtc_slow.bss                0   1342177280
+.rtc_slow.persistent         0   1342177280
+.stack                   84012   1073526740
+.dram2_uninit            65536   1073643056
+.espressif.metadata         18            0
+.debug_loc             1378104            0
+.debug_abbrev            87208            0
+.debug_info            2489948            0
+.debug_aranges           28384            0
+.debug_ranges           352032            0
+.debug_str             1648610            0
+.comment                   284            0
+.xtensa.info                56            0
+.debug_line             921861            0
+.debug_frame             30920            0
+Total                  7909241
+
+
