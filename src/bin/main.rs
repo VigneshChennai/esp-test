@@ -24,7 +24,6 @@ use esp_wifi::{
 // use trouble_host::prelude::ExternalController;
 use log::info;
 use rand_core::RngCore;
-use reqwless::X509;
 use static_cell::StaticCell;
 
 extern crate alloc;
@@ -73,7 +72,6 @@ async fn main(spawner: Spawner) {
             .unwrap()
             .with_hardware_rsa(peripherals.RSA),
     );
-
     let rtc = &*RTC.uninit().write(Mutex::new(Rtc::new(peripherals.LPWR)));
 
     info!("Embassy initialized!");
@@ -116,11 +114,18 @@ async fn main(spawner: Spawner) {
     esp_test::ntp::set_time_using_ntp(rtc, stack).await.unwrap();
 
     // HTTP GET to https://ifconfig.me/ip
-    spawner
-        .spawn(print_public_ip(tls.reference(), stack))
-        .unwrap();
+    let mut client = esp_test::https::client::<1, 1024, 1024>(stack, tls.reference());
+    let mut res_buf = [0u8; 1024];
     loop {
         Timer::after(Duration::from_secs(5)).await;
+        let mut req = client
+            .request(reqwless::request::Method::GET, "https://ifconfig.me/ip")
+            .await
+            .unwrap();
+        let res = req.send(res_buf.as_mut_slice()).await.unwrap();
+        let body = res.body().read_to_end().await.unwrap();
+
+        info!("Public IP: {:?}", core::str::from_utf8(&body));
         info!("Still alive! {:?}", esp_alloc::HEAP.stats());
     }
 }
@@ -161,47 +166,5 @@ async fn wifi_connect(mut controller: WifiController<'static>) {
                 Timer::after(Duration::from_millis(5000)).await
             }
         }
-    }
-}
-
-#[embassy_executor::task(pool_size = 1)]
-async fn print_public_ip(tls_reference: esp_mbedtls::TlsReference<'static>, stack: Stack<'static>) {
-    // Wait until network is ready (DHCP complete)
-    use embassy_net::dns::DnsSocket;
-    use embassy_net::tcp::client::{TcpClient, TcpClientState};
-    use embassy_time::Timer;
-    use esp_mbedtls::Certificates;
-    use reqwless::client::{HttpClient, TlsConfig};
-    use reqwless::request::Method;
-
-    stack.wait_config_up().await;
-    info!("Network ready!");
-    // Create DNS resolver
-    let mut dns = DnsSocket::new(stack);
-
-    let mut certificates = Certificates::new();
-    certificates.ca_chain = Some(X509::pem(esp_test::lets_encrypt_ca::ISRG_ROOT_X1).unwrap());
-    // TLS config (system defaults; you can load root certs if needed)
-    let tls_config = TlsConfig::new(reqwless::TlsVersion::Tls1_2, certificates, tls_reference);
-
-    let state = TcpClientState::<1, 1024, 1024>::new();
-    let tcp_client = TcpClient::new(stack.clone(), &state);
-    // Create HTTP client (with DNS + TLS)
-    let mut client = HttpClient::new_with_tls(&tcp_client, &mut dns, tls_config);
-
-    let mut res_buf = [0u8; 1024];
-
-    loop {
-        // Build request
-        let mut req = client
-            .request(Method::GET, "https://ifconfig.me/ip")
-            .await
-            .unwrap();
-
-        let res = req.send(res_buf.as_mut_slice()).await.unwrap();
-        let body = res.body().read_to_end().await.unwrap();
-        info!("Public IP: {:?}", core::str::from_utf8(&body));
-
-        Timer::after_secs(5).await
     }
 }

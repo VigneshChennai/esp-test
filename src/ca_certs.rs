@@ -1,6 +1,6 @@
 // ISRG Root X1 - Let's Encrypt's primary root CA certificate
 // Valid until 2035, widely supported
-pub const ISRG_ROOT_X1: &[u8] = b"-----BEGIN CERTIFICATE-----
+pub const LETS_ENCRYPT_ISRG_ROOT_X1: &[u8] = b"-----BEGIN CERTIFICATE-----
 MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw
 TzELMAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2Vh
 cmNoIEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDEwHhcNMTUwNjA0MTEwNDM4
