@@ -59,7 +59,7 @@ pub fn get_microseconds_from_ntp(ntp_result: NtpResult) -> u64 {
     whole_seconds_micros + fraction_micros
 }
 
-pub async fn set_time_using_ntp(
+pub async fn set_real_time_using_ntp(
     rtc: &'static Mutex<Rtc<'static>>,
     stack: Stack<'_>,
 ) -> Result<(), Error> {
@@ -87,7 +87,10 @@ pub async fn set_time_using_ntp(
     let ntp_addrs = stack
         .dns_query(NTP_SERVER, DnsQueryType::A)
         .await
-        .map_err(|_| Error::DnsResolutionFailed)?;
+        .map_err(|e| {
+            error!("Failed to resolve DNS: {:?}", e);
+            Error::DnsResolutionFailed
+        })?;
 
     if ntp_addrs.is_empty() {
         error!("Failed to resolve DNS");

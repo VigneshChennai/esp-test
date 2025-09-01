@@ -6,40 +6,24 @@
     holding buffers for the duration of a data transfer."
 )]
 
-use alloc::borrow::ToOwned;
 use critical_section::Mutex;
 use embassy_executor::Spawner;
-use embassy_net::DhcpConfig;
-use embassy_net::{Config, Runner, Stack, StackResources};
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
 use esp_hal::clock::CpuClock;
 use esp_hal::rtc_cntl::Rtc;
 use esp_hal::timer::timg::TimerGroup;
-use esp_wifi::wifi::WifiDevice;
-use esp_wifi::{
-    //    ble::controller::BleConnector,
-    wifi::{ClientConfiguration, Configuration, WifiController, WifiEvent, WifiMode},
-};
+
 // use trouble_host::prelude::ExternalController;
 use log::info;
-use rand_core::RngCore;
 use static_cell::StaticCell;
 
 extern crate alloc;
-
-const SSID: &str = "NETGEAR13";
-const PASSWORD: &str = "royalphoenix978";
 
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
 
-static WIFI_INIT: StaticCell<esp_wifi::EspWifiController<'static>> = StaticCell::new();
-static NET_RESOURCES: StaticCell<StackResources<4>> = StaticCell::new();
-static NET_STACK: StaticCell<Stack<'static>> = StaticCell::new();
-static NET_RUNNER: StaticCell<Runner<'static, WifiDevice>> = StaticCell::new();
-static MBEDTLS: StaticCell<esp_mbedtls::Tls<'static>> = StaticCell::new();
 static RTC: StaticCell<Mutex<Rtc<'static>>> = StaticCell::new();
 
 #[esp_hal_embassy::main]
@@ -67,40 +51,20 @@ async fn main(spawner: Spawner) {
 
     let timer0 = TimerGroup::new(peripherals.TIMG1);
     esp_hal_embassy::init(timer0.timer0);
-    let tls = MBEDTLS.uninit().write(
-        esp_mbedtls::Tls::new(peripherals.SHA)
-            .unwrap()
-            .with_hardware_rsa(peripherals.RSA),
-    );
+
     let rtc = &*RTC.uninit().write(Mutex::new(Rtc::new(peripherals.LPWR)));
+    let rng = esp_hal::rng::Rng::new(peripherals.RNG);
 
-    info!("Embassy initialized!");
-    let mut rng = esp_hal::rng::Rng::new(peripherals.RNG);
-    let timer1 = TimerGroup::new(peripherals.TIMG0);
-    let wifi_init = WIFI_INIT.init(
-        esp_wifi::init(timer1.timer0, rng.clone())
-            .expect("Failed to initialize WIFI/BLE controller"),
-    );
-
-    // // find more examples https://github.com/embassy-rs/trouble/tree/main/examples/esp32
-    //  let connector = BleConnector::new(wifi_init, peripherals.BT);
-    // let _controller: ExternalController<_, 20> = ExternalController::new(connector);
-    let (mut wifi_controller, wifi_interface) = esp_wifi::wifi::new(wifi_init, peripherals.WIFI)
-        .expect("Failed to initialize WIFI controller");
-
-    wifi_controller
-        .set_mode(WifiMode::Sta)
-        .expect("Failed to set wifi mode");
-    spawner.spawn(wifi_connect(wifi_controller)).unwrap();
-
-    // Setup embassy-net stack
-    let config = Config::dhcpv4(DhcpConfig::default());
-    let resources = NET_RESOURCES.init(StackResources::<4>::new());
-    let (stack, runner) = embassy_net::new(wifi_interface.sta, config, resources, rng.next_u64());
-    let stack = NET_STACK.init(stack).to_owned();
-    let runner = NET_RUNNER.init(runner);
-    // Spawn the network stack background task
-    spawner.spawn(net_task(runner)).unwrap();
+    // the wifi_interface needs to be available still end of program.
+    // even though we are not using AP mode, dropping the wifi_interface.ap causing the
+    // wifi to stop working.
+    let wifi_interface =
+        esp_test::wifi::init_wifi(spawner, rng.clone(), peripherals.WIFI, peripherals.TIMG0)
+            .await
+            .unwrap();
+    let stack = esp_test::wifi::init_stack(spawner, wifi_interface.sta, rng)
+        .await
+        .unwrap();
 
     // Wait for DHCP to assign an IP
     stack.wait_config_up().await;
@@ -111,14 +75,23 @@ async fn main(spawner: Spawner) {
     }
 
     // setting time correct so that tls works.
-    esp_test::ntp::set_time_using_ntp(rtc, stack).await.unwrap();
+    esp_test::net::ntp::set_real_time_using_ntp(rtc, stack)
+        .await
+        .unwrap();
+
+    let net_client_factory = esp_test::net::NetClientFactory::<'_, 1, 1024, 1024>::new(
+        stack,
+        peripherals.SHA,
+        peripherals.RSA,
+    );
+    let tcp_client = net_client_factory.new_tcp_client();
+    let mut https_client = net_client_factory.new_https_client(&tcp_client);
 
     // HTTP GET to https://ifconfig.me/ip
-    let mut client = esp_test::https::client::<1, 1024, 1024>(stack, tls.reference());
     let mut res_buf = [0u8; 1024];
     loop {
         Timer::after(Duration::from_secs(5)).await;
-        let mut req = client
+        let mut req = https_client
             .request(reqwless::request::Method::GET, "https://ifconfig.me/ip")
             .await
             .unwrap();
@@ -126,45 +99,8 @@ async fn main(spawner: Spawner) {
         let body = res.body().read_to_end().await.unwrap();
 
         info!("Public IP: {:?}", core::str::from_utf8(&body));
-        info!("Still alive! {:?}", esp_alloc::HEAP.stats());
-    }
-}
-
-#[embassy_executor::task]
-async fn net_task(runner: &'static mut Runner<'static, WifiDevice<'static>>) {
-    runner.run().await;
-}
-
-#[embassy_executor::task]
-async fn wifi_connect(mut controller: WifiController<'static>) {
-    info!("Start connection task");
-    info!("Device capabilities: {:?}", controller.capabilities());
-    loop {
-        if esp_wifi::wifi::wifi_state() == esp_wifi::wifi::WifiState::StaConnected {
-            // wait until we're no longer connected
-            controller.wait_for_event(WifiEvent::StaDisconnected).await;
-            info!("Disconnected from wifi");
-            Timer::after(Duration::from_millis(5000)).await
-        }
-
-        if !matches!(controller.is_started(), Ok(true)) {
-            let client_config = Configuration::Client(ClientConfiguration {
-                ssid: SSID.into(),
-                password: PASSWORD.into(),
-                ..Default::default()
-            });
-            controller.set_configuration(&client_config).unwrap();
-            info!("Starting wifi...");
-            controller.start_async().await.unwrap();
-            info!("Wifi started!");
-        }
-        info!("Connecting to wifi...");
-        match controller.connect_async().await {
-            Ok(_) => info!("Wifi connected!"),
-            Err(e) => {
-                info!("Failed to connect to wifi: {:?}", e);
-                Timer::after(Duration::from_millis(5000)).await
-            }
-        }
+        let used = esp_alloc::HEAP.used();
+        let free = esp_alloc::HEAP.free();
+        info!("Heap {}/{} used.", used, free + used);
     }
 }
