@@ -76,11 +76,13 @@ embedded-nal-async = "0.8.0"
 # Rust debug is too slow.
 # For debug builds always builds with some optimization
 opt-level = "s"
+test = "false"
 
 [profile.release]
 codegen-units = 1        # LLVM can perform better optimizations using a single thread
 debug = 2
 debug-assertions = false
+test = "false"
 
 incremental = false
 lto = 'fat'
