@@ -88,7 +88,7 @@ pub async fn set_real_time_using_ntp(
         .dns_query(NTP_SERVER, DnsQueryType::A)
         .await
         .map_err(|e| {
-            error!("Failed to resolve DNS: {:?}", e);
+            error!("Failed to resolve DNS: {e:?}");
             Error::DnsResolutionFailed
         })?;
 
@@ -102,7 +102,7 @@ pub async fn set_real_time_using_ntp(
 
     match result {
         Ok(time) => {
-            info!("Time: {:?}", time);
+            info!("Time: {time:?}");
             critical_section::with(|cs| {
                 let rtc = rtc.borrow(cs);
                 rtc.set_current_time_us(get_microseconds_from_ntp(time));
@@ -111,7 +111,7 @@ pub async fn set_real_time_using_ntp(
             Ok(())
         }
         Err(e) => {
-            error!("Error getting time: {:?}", e);
+            error!("Error getting time: {e:?}");
             Err(Error::NtpTimeFailed)
         }
     }

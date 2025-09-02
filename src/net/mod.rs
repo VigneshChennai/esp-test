@@ -25,13 +25,13 @@ impl<'a, const N: usize, const TX_SZ: usize, const RX_SZ: usize>
         Self {
             stack,
             state: TcpClientState::new(),
-            dns: DnsSocket::new(stack.clone()),
+            dns: DnsSocket::new(stack),
             tls: Tls::new(sha).unwrap().with_hardware_rsa(rsa),
         }
     }
 
     pub fn new_tcp_client(&'a self) -> TcpClient<'a, N, TX_SZ, RX_SZ> {
-        TcpClient::new(self.stack.clone(), &self.state)
+        TcpClient::new(self.stack, &self.state)
     }
 
     pub fn new_https_client(

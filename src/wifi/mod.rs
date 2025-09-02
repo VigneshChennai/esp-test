@@ -58,7 +58,7 @@ pub async fn init_wifi(
     spawner
         .spawn(wifi_connect(wifi_controller))
         .map_err(|_| Error::WifiConnectError)?;
-    return Ok(wifi_interface);
+    Ok(wifi_interface)
 }
 
 pub async fn init_stack<'a>(
@@ -78,7 +78,7 @@ pub async fn init_stack<'a>(
         .spawn(net_task(runner))
         .map_err(|_| Error::NetTaskError)?;
     stack.wait_config_up().await;
-    return Ok(stack);
+    Ok(stack)
 }
 
 #[embassy_executor::task]
@@ -113,7 +113,7 @@ pub async fn wifi_connect(mut controller: WifiController<'static>) {
         match controller.connect_async().await {
             Ok(_) => info!("Wifi connected!"),
             Err(e) => {
-                info!("Failed to connect to wifi: {:?}", e);
+                info!("Failed to connect to wifi: {e:?}");
                 Timer::after(Duration::from_millis(5000)).await
             }
         }
