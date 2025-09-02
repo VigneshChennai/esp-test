@@ -1,11 +1,9 @@
 use core::net::{IpAddr, SocketAddr};
-use critical_section::Mutex;
 use embassy_net::dns::DnsQueryType;
 use embassy_net::udp::{PacketMetadata, UdpSocket};
 use embassy_net::Stack;
 use embassy_time::Instant;
 use esp_hal::rtc_cntl::Rtc;
-use log::{error, info};
 use sntpc::{get_time, NtpContext, NtpResult, NtpTimestampGenerator};
 
 const NTP_SERVER: &str = "pool.ntp.org";
@@ -100,7 +98,7 @@ pub async fn get_real_time_using_ntp(stack: Stack<'_>) -> Result<u64, Error> {
     match result {
         Ok(time) => {
             info!("Time: {time:?}");
-            Ok((get_microseconds_from_ntp(time)))
+            Ok(get_microseconds_from_ntp(time))
         }
         Err(e) => {
             error!("Error getting time: {e:?}");
