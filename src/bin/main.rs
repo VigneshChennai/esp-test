@@ -23,8 +23,6 @@ use static_cell::StaticCell;
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
 
-static RTC: StaticCell<Mutex<Rtc<'static>>> = StaticCell::new();
-
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
     // generator version: 0.5.0
@@ -52,7 +50,6 @@ async fn main(spawner: Spawner) {
     let timer0 = TimerGroup::new(peripherals.TIMG1);
     esp_hal_embassy::init(timer0.timer0);
 
-    let rtc = &*RTC.uninit().write(Mutex::new(Rtc::new(peripherals.LPWR)));
     let rng = esp_hal::rng::Rng::new(peripherals.RNG);
 
     // the wifi_interface needs to be available still end of program.
@@ -75,9 +72,11 @@ async fn main(spawner: Spawner) {
     }
 
     // setting time correct so that tls works.
-    esp_test::net::ntp::set_real_time_using_ntp(rtc, stack)
+    let rtc = Rtc::new(peripherals.LPWR);
+    let current_time_us = esp_test::net::ntp::get_real_time_using_ntp(stack)
         .await
-        .unwrap();
+        .expect("Failed to get time from NTP");
+    rtc.set_current_time_us(current_time_us);
 
     let net_client_factory = esp_test::net::NetClientFactory::<'_, 1, 1024, 1024>::new(
         stack,

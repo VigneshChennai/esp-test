@@ -1,12 +1,12 @@
 use core::net::{IpAddr, SocketAddr};
 use critical_section::Mutex;
-use embassy_net::Stack;
 use embassy_net::dns::DnsQueryType;
 use embassy_net::udp::{PacketMetadata, UdpSocket};
+use embassy_net::Stack;
 use embassy_time::Instant;
 use esp_hal::rtc_cntl::Rtc;
 use log::{error, info};
-use sntpc::{NtpContext, NtpResult, NtpTimestampGenerator, get_time};
+use sntpc::{get_time, NtpContext, NtpResult, NtpTimestampGenerator};
 
 const NTP_SERVER: &str = "pool.ntp.org";
 
@@ -59,10 +59,7 @@ pub fn get_microseconds_from_ntp(ntp_result: NtpResult) -> u64 {
     whole_seconds_micros + fraction_micros
 }
 
-pub async fn set_real_time_using_ntp(
-    rtc: &'static Mutex<Rtc<'static>>,
-    stack: Stack<'_>,
-) -> Result<(), Error> {
+pub async fn get_real_time_using_ntp(stack: Stack<'_>) -> Result<u64, Error> {
     info!("Waiting for network connection to be up.");
     // Wait for the tap interface to be up before continuing
     stack.wait_config_up().await;
@@ -103,12 +100,7 @@ pub async fn set_real_time_using_ntp(
     match result {
         Ok(time) => {
             info!("Time: {time:?}");
-            critical_section::with(|cs| {
-                let rtc = rtc.borrow(cs);
-                rtc.set_current_time_us(get_microseconds_from_ntp(time));
-            });
-
-            Ok(())
+            Ok((get_microseconds_from_ntp(time)))
         }
         Err(e) => {
             error!("Error getting time: {e:?}");
