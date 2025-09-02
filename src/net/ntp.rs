@@ -3,7 +3,8 @@ use embassy_net::dns::DnsQueryType;
 use embassy_net::udp::{PacketMetadata, UdpSocket};
 use embassy_net::Stack;
 use embassy_time::Instant;
-use esp_hal::rtc_cntl::Rtc;
+
+use log::{error, info};
 use sntpc::{get_time, NtpContext, NtpResult, NtpTimestampGenerator};
 
 const NTP_SERVER: &str = "pool.ntp.org";

@@ -7,6 +7,7 @@
 )]
 
 extern crate alloc;
+use critical_section::Mutex;
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
@@ -16,10 +17,13 @@ use esp_hal::timer::timg::TimerGroup;
 
 // use trouble_host::prelude::ExternalController;
 use log::info;
+use static_cell::StaticCell;
 
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
+
+static RTC: StaticCell<Mutex<Rtc<'static>>> = StaticCell::new();
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
@@ -48,6 +52,7 @@ async fn main(spawner: Spawner) {
     let timer0 = TimerGroup::new(peripherals.TIMG1);
     esp_hal_embassy::init(timer0.timer0);
 
+    let rtc = &*RTC.uninit().write(Mutex::new(Rtc::new(peripherals.LPWR)));
     let rng = esp_hal::rng::Rng::new(peripherals.RNG);
 
     // the wifi_interface needs to be available still end of program.
@@ -69,12 +74,13 @@ async fn main(spawner: Spawner) {
         info!("No IP address assigned.");
     }
 
-    // setting time correct so that tls works.
-    let rtc = Rtc::new(peripherals.LPWR);
+    // setting time correct
     let current_time_us = esp_test::net::ntp::get_real_time_using_ntp(stack)
         .await
         .expect("Failed to get time from NTP");
-    rtc.set_current_time_us(current_time_us);
+    critical_section::with(|cs| {
+        rtc.borrow(cs).set_current_time_us(current_time_us);
+    });
 
     let net_client_factory = esp_test::net::NetClientFactory::<'_, 1, 1024, 1024>::new(
         stack,
