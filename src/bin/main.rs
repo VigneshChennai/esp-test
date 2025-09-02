@@ -59,7 +59,7 @@ async fn main(spawner: Spawner) {
     // even though we are not using AP mode, dropping the wifi_interface.ap causing the
     // Wi-Fi to stop working.
     let wifi_interface =
-        esp_test::wifi::init_wifi(spawner, rng.clone(), peripherals.WIFI, peripherals.TIMG0)
+        esp_test::wifi::init_wifi(spawner, rng, peripherals.WIFI, peripherals.TIMG0)
             .await
             .unwrap();
     let stack = esp_test::wifi::init_stack(spawner, wifi_interface.sta, rng)
@@ -98,7 +98,7 @@ async fn main(spawner: Spawner) {
         let res = req.send(res_buf.as_mut_slice()).await.unwrap();
         let body = res.body().read_to_end().await.unwrap();
 
-        info!("Public IP: {:?}", core::str::from_utf8(&body));
+        info!("Public IP: {:?}", core::str::from_utf8(body));
         let used = esp_alloc::HEAP.used();
         let free = esp_alloc::HEAP.free();
         info!("Heap {}/{} used.", used, free + used);
