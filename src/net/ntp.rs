@@ -1,11 +1,11 @@
 use core::net::{IpAddr, SocketAddr};
+use embassy_net::Stack;
 use embassy_net::dns::DnsQueryType;
 use embassy_net::udp::{PacketMetadata, UdpSocket};
-use embassy_net::Stack;
 use embassy_time::Instant;
 
 use log::{error, info};
-use sntpc::{get_time, NtpContext, NtpResult, NtpTimestampGenerator};
+use sntpc::{NtpContext, NtpResult, NtpTimestampGenerator, get_time};
 
 const NTP_SERVER: &str = "pool.ntp.org";
 
