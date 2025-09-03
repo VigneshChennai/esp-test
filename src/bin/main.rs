@@ -52,7 +52,7 @@ async fn main(spawner: Spawner) {
     let timer0 = TimerGroup::new(peripherals.TIMG1);
     esp_hal_embassy::init(timer0.timer0);
 
-    let rtc = &*RTC.uninit().write(Mutex::new(Rtc::new(peripherals.LPWR)));
+    let rtc = Rtc::new(peripherals.LPWR);
     let rng = esp_hal::rng::Rng::new(peripherals.RNG);
 
     // the wifi_interface needs to be available still end of program.
@@ -78,9 +78,7 @@ async fn main(spawner: Spawner) {
     let current_time_us = esp_test::net::ntp::get_real_time_using_ntp(stack)
         .await
         .expect("Failed to get time from NTP");
-    critical_section::with(|cs| {
-        rtc.borrow(cs).set_current_time_us(current_time_us);
-    });
+    rtc.set_current_time_us(current_time_us);
 
     let net_client_factory = esp_test::net::NetClientFactory::<'_, 1, 1024, 1024>::new(
         stack,
