@@ -7,7 +7,6 @@
 )]
 
 extern crate alloc;
-use critical_section::Mutex;
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use esp_backtrace as _;
@@ -17,13 +16,10 @@ use esp_hal::timer::timg::TimerGroup;
 
 // use trouble_host::prelude::ExternalController;
 use log::info;
-use static_cell::StaticCell;
 
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
 esp_bootloader_esp_idf::esp_app_desc!();
-
-static RTC: StaticCell<Mutex<Rtc<'static>>> = StaticCell::new();
 
 #[esp_hal_embassy::main]
 async fn main(spawner: Spawner) {
