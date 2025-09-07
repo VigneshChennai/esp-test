@@ -109,7 +109,7 @@ pub static CONFIG: Lazy<Config> = Lazy::new(|| {
     let fs = Filesystem::mount(&mut alloc, &mut storage)
         .map(Some)
         .unwrap_or(None);
-    
+
     match fs {
         None => {
             Filesystem::format(&mut storage).unwrap();

@@ -8,7 +8,7 @@
 
 extern crate alloc;
 use embassy_executor::Spawner;
-use embassy_time::{with_timeout, Duration, Timer};
+use embassy_time::{Duration, Timer, with_timeout};
 use esp_backtrace as _;
 use esp_hal::clock::CpuClock;
 use esp_hal::rtc_cntl::Rtc;

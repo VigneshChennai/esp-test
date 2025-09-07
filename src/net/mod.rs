@@ -3,13 +3,13 @@ extern crate alloc;
 pub mod ca_certs;
 pub mod ntp;
 
+use embassy_net::Stack;
 use embassy_net::dns::DnsSocket;
 use embassy_net::tcp::client::{TcpClient, TcpClientState};
-use embassy_net::Stack;
 use esp_hal::peripherals;
 use esp_mbedtls::{Certificates, Tls};
-use reqwless::client::{HttpClient, TlsConfig};
 use reqwless::X509;
+use reqwless::client::{HttpClient, TlsConfig};
 
 pub struct NetClientFactory<'a, const N: usize, const TX_SZ: usize, const RX_SZ: usize> {
     stack: Stack<'a>,

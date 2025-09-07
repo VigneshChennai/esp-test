@@ -1,5 +1,5 @@
-use embedded_storage::nor_flash::NorFlash;
 use embedded_storage::ReadStorage;
+use embedded_storage::nor_flash::NorFlash;
 use esp_storage::FlashStorage;
 use littlefs2::fs::Allocation;
 use littlefs2::io::Error;
