@@ -99,7 +99,7 @@ pub async fn wifi_connect(mut controller: WifiController<'static>) {
             let client_config = Configuration::Client(ClientConfiguration {
                 ssid: crate::config::CONFIG.wifi.ssid.to_owned(),
                 password: crate::config::CONFIG.wifi.password.clone(),
-                channel: crate::config::CONFIG.wifi.channel.clone(),
+                channel: crate::config::CONFIG.wifi.channel,
                 ..Default::default()
             });
             controller.set_configuration(&client_config).unwrap();

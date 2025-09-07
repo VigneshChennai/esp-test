@@ -107,9 +107,10 @@ pub static CONFIG: Lazy<Config> = Lazy::new(|| {
     let mut storage = AppStorage::new();
     let mut alloc = Allocation::new();
     let fs = Filesystem::mount(&mut alloc, &mut storage)
-        .map(|fs| Some(fs))
+        .map(Some)
         .unwrap_or(None);
-    let config = match fs {
+    
+    match fs {
         None => {
             Filesystem::format(&mut storage).unwrap();
             warn!("No filesystem available. Formatted it and using default config");
@@ -120,7 +121,7 @@ pub static CONFIG: Lazy<Config> = Lazy::new(|| {
                 fs.read::<{ 1024 * 4 }>(Path::from_bytes_with_nul(b"/config.toml\0").unwrap());
             match read_result {
                 Ok(d) => toml::from_slice(d.as_slice()).unwrap_or_else(|e| {
-                    warn!("Failed to parse config: {:?}", e);
+                    warn!("Failed to parse config: {e:?}");
                     warn!("Using default config");
                     Config::default()
                 }),
@@ -138,6 +139,5 @@ pub static CONFIG: Lazy<Config> = Lazy::new(|| {
                 }
             }
         }
-    };
-    config
+    }
 });

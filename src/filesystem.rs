@@ -15,6 +15,12 @@ pub struct AppStorage {
     flash_storage: FlashStorage,
 }
 
+impl Default for AppStorage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AppStorage {
     pub fn new() -> Self {
         Self {
@@ -37,7 +43,7 @@ impl littlefs2::driver::Storage for AppStorage {
             .read(addr, buf)
             .map(|_| buf.len())
             .map_err(|e| {
-                error!("Flash read error: {:?}", e);
+                error!("Flash read error: {e:?}");
                 Error::IO
             })
     }
@@ -47,7 +53,7 @@ impl littlefs2::driver::Storage for AppStorage {
         embedded_storage::Storage::write(&mut self.flash_storage, addr, data)
             .map(|_| data.len())
             .map_err(|e| {
-                error!("Flash write error: {:?}", e);
+                error!("Flash write error: {e:?}");
                 Error::IO
             })
     }
@@ -59,7 +65,7 @@ impl littlefs2::driver::Storage for AppStorage {
             .erase(addr, end)
             .map(|_| len)
             .map_err(|e| {
-                error!("Flash erase error: {:?}", e);
+                error!("Flash erase error: {e:?}");
                 Error::IO
             })
     }
