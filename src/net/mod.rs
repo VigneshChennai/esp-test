@@ -3,13 +3,13 @@ extern crate alloc;
 pub mod ca_certs;
 pub mod ntp;
 
-use embassy_net::Stack;
 use embassy_net::dns::DnsSocket;
 use embassy_net::tcp::client::{TcpClient, TcpClientState};
+use embassy_net::Stack;
 use esp_hal::peripherals;
 use esp_mbedtls::{Certificates, Tls};
-use reqwless::X509;
 use reqwless::client::{HttpClient, TlsConfig};
+use reqwless::X509;
 
 pub struct NetClientFactory<'a, const N: usize, const TX_SZ: usize, const RX_SZ: usize> {
     stack: Stack<'a>,
@@ -39,10 +39,9 @@ impl<'a, const N: usize, const TX_SZ: usize, const RX_SZ: usize>
         tcp_client: &'a TcpClient<'a, N, TX_SZ, RX_SZ>,
     ) -> HttpClient<'a, TcpClient<'a, N, TX_SZ, RX_SZ>, DnsSocket<'a>> {
         let mut certificates = Certificates::new();
-        certificates.ca_chain = Some(
-            X509::pem(ca_certs::LETS_ENCRYPT_ISRG_ROOT_X1)
-                .expect("Bug in CA certificate of lets encrypt. Failed to parse."),
-        );
+        let cert = &crate::config::CONFIG.net.https.ca_cert.pem;
+        certificates.ca_chain =
+            Some(X509::pem(cert).expect("Bug in CA certificate of lets encrypt. Failed to parse."));
 
         HttpClient::new_with_tls(
             tcp_client,

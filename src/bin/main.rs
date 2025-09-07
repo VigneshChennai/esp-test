@@ -8,14 +8,14 @@
 
 extern crate alloc;
 use embassy_executor::Spawner;
-use embassy_time::{Duration, Timer};
+use embassy_time::{with_timeout, Duration, Timer};
 use esp_backtrace as _;
 use esp_hal::clock::CpuClock;
 use esp_hal::rtc_cntl::Rtc;
 use esp_hal::timer::timg::TimerGroup;
 
 // use trouble_host::prelude::ExternalController;
-use log::info;
+use log::{info, warn};
 
 // This creates a default app-descriptor required by the esp-idf bootloader.
 // For more information see: <https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/app_image_format.html#application-description>
@@ -71,9 +71,29 @@ async fn main(spawner: Spawner) {
     }
 
     // setting time correct
-    let current_time_us = esp_test::net::ntp::get_real_time_using_ntp(stack)
+    let current_time_us = loop {
+        match with_timeout(
+            Duration::from_secs(5),
+            esp_test::net::ntp::get_real_time_using_ntp(stack),
+        )
         .await
-        .expect("Failed to get time from NTP");
+        {
+            Ok(r) => match r {
+                Ok(v) => {
+                    break v;
+                }
+                Err(e) => {
+                    warn!("Failed to get time from NTP due {e:?}");
+                    Timer::after(Duration::from_secs(5)).await;
+                }
+            },
+            Err(_) => {
+                warn!("Failed to get time from NTP due to timeout");
+                Timer::after(Duration::from_secs(5)).await;
+            }
+        }
+    };
+
     rtc.set_current_time_us(current_time_us);
 
     let net_client_factory = esp_test::net::NetClientFactory::<'_, 1, 1024, 1024>::new(

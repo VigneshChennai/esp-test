@@ -1,5 +1,9 @@
 [target.xtensa-esp32-none-elf]
-runner = "espflash flash --monitor --chip esp32"
+runner = "espflash flash --monitor --chip esp32 --partition-table partitions.csv"
+
+[target.xtensa-esp32-none-elf.build-override]
+cc = "xtensa-esp32-elf-gcc"
+ar = "xtensa-esp32-elf-ar"
 
 [build]
 rustflags = ["-C", "link-arg=-nostartfiles", "-Z", "stack-protector=all"]
@@ -11,3 +15,6 @@ build-std = ["alloc", "core"]
 
 [env]
 ESP_LOG = "error,esp_test=info"
+CFLAGS = "-mlongcalls"
+CARGO_TARGET_XTENSA_ESP32_NONE_ELF_AR = "xtensa-esp32-elf-ar"
+CARGO_TARGET_XTENSA_ESP32_NONE_ELF_LINKER = "xtensa-esp32-elf-gcc"

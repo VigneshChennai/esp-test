@@ -33,9 +33,6 @@ pub enum Error {
     NetTaskError,
 }
 
-const SSID: &str = "NETGEAR13";
-const PASSWORD: &str = "royalphoenix978";
-
 pub async fn init_wifi(
     spawner: Spawner,
     rng: Rng,
@@ -100,8 +97,9 @@ pub async fn wifi_connect(mut controller: WifiController<'static>) {
 
         if !matches!(controller.is_started(), Ok(true)) {
             let client_config = Configuration::Client(ClientConfiguration {
-                ssid: SSID.into(),
-                password: PASSWORD.into(),
+                ssid: crate::config::CONFIG.wifi.ssid.to_owned(),
+                password: crate::config::CONFIG.wifi.password.clone(),
+                channel: crate::config::CONFIG.wifi.channel.clone(),
                 ..Default::default()
             });
             controller.set_configuration(&client_config).unwrap();
